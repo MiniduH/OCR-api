@@ -1,0 +1,115 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const { connectDB } = require('./config/database');
+
+// Import OCR API routes
+const ticketsRoutes = require('./routes/tickets');
+
+// Import Public Web Routes (no authentication required)
+const webPublicRoutes = require('./routes/webPublic');
+
+const app = express();
+
+// Connect to database
+connectDB();
+
+// CORS Configuration - Allow all origins
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // For HTTPS, allow localhost on any port
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      return callback(null, true);
+    }
+    
+    // In production, add your specific domains
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    callback(new Error('CORS not allowed'));
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
+
+// Middleware
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// OCR API Routes
+app.use('/api/ocr/tickets', ticketsRoutes);
+
+// Public Web Routes (no authentication required)
+app.use('/api/web', webPublicRoutes);
+
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// API Documentation
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'OCR API',
+    version: '1.0.0',
+    endpoints: {
+      ocr: {
+        tickets: {
+          create: 'POST /api/ocr/tickets',
+          createWithImage: 'POST /api/ocr/tickets/with-image (multipart/form-data)',
+          getAll: 'GET /api/ocr/tickets',
+          getById: 'GET /api/ocr/tickets/:id',
+          getByTraceNo: 'GET /api/ocr/tickets/trace/:traceNo',
+          getCount: 'GET /api/ocr/tickets/count',
+          searchByDateRange: 'GET /api/ocr/tickets/search/date-range?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD',
+          update: 'PUT /api/ocr/tickets/:id',
+          delete: 'DELETE /api/ocr/tickets/:id',
+        },
+      },
+    },
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route not found',
+    path: req.path,
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+
+// HTTP Configuration
+app.listen(PORT, () => {
+  console.log(`🌐 Server running on http://localhost:${PORT}`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/api`);
+  console.log(`❤️  Health Check: http://localhost:${PORT}/api/health`);
+});
