@@ -1,5 +1,6 @@
 const express = require('express');
 const ReprintRequestsController = require('../controllers/reprintRequestsController');
+const WorkflowsController = require('../controllers/workflowsController');
 
 const router = express.Router();
 
@@ -32,5 +33,16 @@ router.patch('/:id/status', ReprintRequestsController.updateReprintRequestStatus
 
 // Delete reprint request
 router.delete('/:id', ReprintRequestsController.deleteReprintRequest);
+
+// ==================== WORKFLOW ROUTES ====================
+
+// Initialize workflow for a reprint request
+router.post('/:requestId/workflow', WorkflowsController.initializeReprintRequestWorkflow);
+
+// Get approval status and history for a reprint request
+router.get('/:requestId/approvals', WorkflowsController.getReprintRequestApprovals);
+
+// Approve or reject a reprint request
+router.post('/:requestId/approve', WorkflowsController.approveReprintRequest);
 
 module.exports = router;

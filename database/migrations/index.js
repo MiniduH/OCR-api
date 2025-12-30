@@ -24,6 +24,8 @@ const runMigrations = async () => {
     const migration35 = require('./035_create_permissions_table');
     const migration40 = require('./040_update_roles_use_permission_ids');
     const migration45 = require('./045_create_reprint_requests_table');
+    const migration50 = require('./050_create_workflow_tables');
+    const migration55 = require('./055_add_workflow_to_reprint_requests');
 
     // Run migrations in sequence
     console.log('📦 Migration 1: Creating tickets table...');
@@ -53,6 +55,14 @@ const runMigrations = async () => {
     console.log('📦 Migration 7: Creating reprint_requests table...');
     await migration45.up();
     console.log('✅ Migration 7 completed\n');
+
+    console.log('📦 Migration 8: Creating workflow tables...');
+    await migration50.up();
+    console.log('✅ Migration 8 completed\n');
+
+    console.log('📦 Migration 9: Adding workflow to reprint requests...');
+    await migration55.up();
+    console.log('✅ Migration 9 completed\n');
 
     console.log('✨ All migrations completed successfully!');
     process.exit(0);

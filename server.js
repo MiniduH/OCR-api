@@ -27,6 +27,11 @@ const rolesRoutes = require('./routes/roles');
 // Import Reprint Requests routes
 const reprintRequestsRoutes = require('./routes/reprintRequests');
 
+// Import Workflow routes
+const workflowsRoutes = require('./routes/workflows');
+const workflowNodesRoutes = require('./routes/workflowNodes');
+const approvalsRoutes = require('./routes/approvals');
+
 const app = express();
 
 // Connect to database
@@ -83,6 +88,15 @@ app.use('/api/roles', rolesRoutes);
 // Reprint Requests Routes
 app.use('/api/reprint-requests', reprintRequestsRoutes);
 
+// Workflows Routes
+app.use('/api/workflows', workflowsRoutes);
+
+// Workflow Nodes Routes
+app.use('/api/nodes', workflowNodesRoutes);
+
+// Approvals Routes
+app.use('/api/approvals', approvalsRoutes);
+
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -131,7 +145,32 @@ app.get('/api', (req, res) => {
           searchByDateRange: 'GET /api/ocr/tickets/search/date-range?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD',
           update: 'PUT /api/ocr/tickets/:id',
           delete: 'DELETE /api/ocr/tickets/:id',
+          initializeWorkflow: 'POST /api/ocr/tickets/:ticketId/workflow',
+          approve: 'POST /api/ocr/tickets/:ticketId/approve',
+          getApprovals: 'GET /api/ocr/tickets/:ticketId/approvals',
         },
+      },
+      workflows: {
+        create: 'POST /api/workflows',
+        getAll: 'GET /api/workflows',
+        getById: 'GET /api/workflows/:id',
+        update: 'PUT /api/workflows/:id',
+        delete: 'DELETE /api/workflows/:id',
+        addNode: 'POST /api/workflows/:workflowId/nodes',
+        getNodes: 'GET /api/workflows/:workflowId/nodes',
+        updateNode: 'PUT /api/workflows/:workflowId/nodes/:nodeId',
+        deleteNode: 'DELETE /api/workflows/:workflowId/nodes/:nodeId',
+        reorderNodes: 'PUT /api/workflows/:workflowId/nodes/reorder',
+      },
+      nodes: {
+        getUsers: 'GET /api/nodes/:nodeId/users',
+        addUsers: 'POST /api/nodes/:nodeId/users',
+        setUsers: 'PUT /api/nodes/:nodeId/users',
+        removeUser: 'DELETE /api/nodes/:nodeId/users/:userId',
+      },
+      approvals: {
+        getPending: 'GET /api/approvals/pending?userId=:userId',
+        getTicketsPending: 'GET /api/approvals/tickets/pending?userId=:userId',
       },
     },
   });
