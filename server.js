@@ -6,11 +6,23 @@ const fs = require('fs');
 const path = require('path');
 const { connectDB } = require('./config/database');
 
+// Import authentication routes
+const authRoutes = require('./routes/auth');
+
 // Import OCR API routes
 const ticketsRoutes = require('./routes/tickets');
 
 // Import Public Web Routes (no authentication required)
 const webPublicRoutes = require('./routes/webPublic');
+
+// Import Users routes
+const usersRoutes = require('./routes/users');
+
+// Import Permissions routes
+const permissionsRoutes = require('./routes/permissions');
+
+// Import Roles routes
+const rolesRoutes = require('./routes/roles');
 
 const app = express();
 
@@ -47,11 +59,23 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Authentication Routes (public routes)
+app.use('/api/auth', authRoutes);
+
 // OCR API Routes
 app.use('/api/ocr/tickets', ticketsRoutes);
 
 // Public Web Routes (no authentication required)
 app.use('/api/web', webPublicRoutes);
+
+// Users Management Routes
+app.use('/api/users', usersRoutes);
+
+// Permissions Routes
+app.use('/api/permissions', permissionsRoutes);
+
+// Roles Routes
+app.use('/api/roles', rolesRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -66,9 +90,30 @@ app.get('/api/health', (req, res) => {
 app.get('/api', (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'OCR API',
+    message: 'TMS API',
     version: '1.0.0',
     endpoints: {
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        logout: 'POST /api/auth/logout (requires token)',
+        refreshToken: 'POST /api/auth/refresh-token',
+        getCurrentUser: 'GET /api/auth/me (requires token)',
+        verifyToken: 'POST /api/auth/verify-token (requires token)',
+        changePassword: 'POST /api/auth/change-password (requires token)',
+        forgotPassword: 'POST /api/auth/forgot-password',
+        resetPassword: 'POST /api/auth/reset-password',
+      },
+      users: {
+        getAll: 'GET /api/users',
+        getById: 'GET /api/users/:id',
+        create: 'POST /api/users',
+        update: 'PUT /api/users/:id',
+        updatePassword: 'PUT /api/users/:id/password',
+        changeStatus: 'PATCH /api/users/:id/status',
+        updateLastLogin: 'PATCH /api/users/:id/last-login',
+        delete: 'DELETE /api/users/:id',
+      },
       ocr: {
         tickets: {
           create: 'POST /api/ocr/tickets',

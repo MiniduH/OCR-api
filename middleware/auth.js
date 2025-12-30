@@ -46,7 +46,14 @@ const authorize = (...roles) => {
   return async (req, res, next) => {
     try {
       const UserCms = require('../models/UserCms');
-      const user = await UserCms.findById(req.user.id);
+      const Users = require('../models/Users');
+      
+      // Try to find user in Users collection first, then UserCms
+      let user = await Users.findById(req.user.id);
+      
+      if (!user) {
+        user = await UserCms.findById(req.user.id);
+      }
 
       if (!user) {
         return res.status(404).json({
