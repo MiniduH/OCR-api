@@ -24,6 +24,9 @@ const permissionsRoutes = require('./routes/permissions');
 // Import Roles routes
 const rolesRoutes = require('./routes/roles');
 
+// Import Reprint Requests routes
+const reprintRequestsRoutes = require('./routes/reprintRequests');
+
 const app = express();
 
 // Connect to database
@@ -76,6 +79,9 @@ app.use('/api/permissions', permissionsRoutes);
 
 // Roles Routes
 app.use('/api/roles', rolesRoutes);
+
+// Reprint Requests Routes
+app.use('/api/reprint-requests', reprintRequestsRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
