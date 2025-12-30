@@ -52,7 +52,8 @@ module.exports = async function uploadTicketImage(imageBuffer, originalName, tra
     throw new Error(`Failed to upload image: ${error.message}`);
   }
 
-  // Return the S3 path
-  // Format: s3://bucket-name/path
-  return `s3://${process.env.AWS_BUCKET}/${fileName}`;
+  // Return the MinIO HTTPS viewable path
+  // Format: https://minio.divisarana.org/bucket-name/path
+  const minionUrl = process.env.MINIO_URL || 'https://minio.divisarana.org';
+  return `${minionUrl}/${process.env.AWS_BUCKET}/${fileName}`;
 };
