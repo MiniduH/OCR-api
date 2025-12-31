@@ -1,6 +1,38 @@
 const { query } = require('../config/database');
+const bcrypt = require('bcryptjs');
+
+// Role mapping: numeric IDs to role names
+const ROLE_MAP = {
+  1: 'user',
+  2: 'moderator',
+  3: 'admin',
+};
+
+const REVERSE_ROLE_MAP = {
+  'user': 1,
+  'moderator': 2,
+  'admin': 3,
+};
 
 class UsersModel {
+  // Helper function to convert numeric role ID to role name
+  static convertRoleToString(role) {
+    if (typeof role === 'number') {
+      return ROLE_MAP[role] || 'user';
+    }
+    return role || 'user';
+  }
+
+  // Helper function to hash password
+  static async hashPassword(password) {
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      return hashedPassword;
+    } catch (error) {
+      console.error('Error hashing password:', error);
+      throw error;
+    }
+  }
   static async createTable() {
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS users (
@@ -46,6 +78,12 @@ class UsersModel {
       metadata,
     } = user;
 
+    // Convert numeric role to string
+    const roleString = this.convertRoleToString(role);
+
+    // Hash password
+    const hashedPassword = await this.hashPassword(password);
+
     const insertQuery = `
       INSERT INTO users (
         first_name,
@@ -69,9 +107,9 @@ class UsersModel {
       last_name,
       username,
       email,
-      password,
+      hashedPassword,
       phone || null,
-      role || 'user',
+      roleString,
       status || 'active',
       department || null,
       is_verified || false,
@@ -140,17 +178,31 @@ class UsersModel {
     const values = [];
     let paramCount = 1;
 
-    Object.entries(updates).forEach(([key, value]) => {
+    Object.entries(updates).forEach(async ([key, value]) => {
       if (key !== 'id' && key !== 'created_at') {
         updateFields.push(`${key} = $${paramCount}`);
         if (key === 'metadata') {
           values.push(JSON.stringify(value));
+        } else if (key === 'password') {
+          // Hash password before updating
+          values.push(value); // Will be replaced with hashed value
         } else {
           values.push(value);
         }
         paramCount++;
       }
     });
+
+    // Hash password if it's being updated
+    if (updates.password) {
+      const passwordIndex = values.findIndex((_, i) => {
+        const keys = Object.keys(updates).filter(k => k !== 'id' && k !== 'created_at');
+        return keys[i] === 'password';
+      });
+      if (passwordIndex !== -1) {
+        values[passwordIndex] = await this.hashPassword(updates.password);
+      }
+    }
 
     updateFields.push(`updated_at = $${paramCount}`);
     values.push(new Date());

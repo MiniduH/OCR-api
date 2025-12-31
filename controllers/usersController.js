@@ -24,8 +24,9 @@ class UsersController {
       const newUser = await UsersModel.create(user);
       res.status(201).json({ success: true, data: newUser });
     } catch (error) {
-      console.error('Error in createUser:', error);
-      res.status(500).json({ error: 'Failed to create user' });
+      console.error('Error in createUser:', error.message);
+      console.error('Error details:', error);
+      res.status(500).json({ error: 'Failed to create user', details: error.message });
     }
   }
 
