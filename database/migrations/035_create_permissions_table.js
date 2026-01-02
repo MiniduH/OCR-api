@@ -12,6 +12,7 @@ const up = async () => {
     await query(`
       CREATE TABLE IF NOT EXISTS permissions (
         id SERIAL PRIMARY KEY,
+        parent_id INTEGER,
         name VARCHAR(100) NOT NULL UNIQUE,
         description TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

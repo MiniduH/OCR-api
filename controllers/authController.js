@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const UsersModel = require('../models/Users');
 const AuthTokenModel = require('../models/AuthToken');
+const RolesModel = require('../models/Roles');
+const PermissionsModel = require('../models/Permissions');
 
 class AuthController {
   /**
@@ -104,7 +106,7 @@ class AuthController {
    */
   static async login(req, res) {
     try {
-      const { email, username, password } = req.body;
+      const { email, username, password, type } = req.body;
 
       // Validate required fields
       if (!password) {
@@ -114,6 +116,16 @@ class AuthController {
 
       if (!email && !username) {
         res.status(400).json({ error: 'Email or username is required' });
+        return;
+      }
+
+      if (!type) {
+        res.status(400).json({ error: 'Type (app or portal) is required' });
+        return;
+      }
+
+      if (!['app', 'portal'].includes(type)) {
+        res.status(400).json({ error: 'Type must be either "app" or "portal"' });
         return;
       }
 
@@ -139,6 +151,39 @@ class AuthController {
         return;
       }
 
+      // Get role and permissions
+      const role = await RolesModel.getByName(user.role);
+      let permissions = [];
+      
+      if (role) {
+        const permissionIds = Array.isArray(role.permissions) 
+          ? role.permissions 
+          : JSON.parse(role.permissions || '[]');
+        
+        // Fetch permission details
+        permissions = await Promise.all(
+          permissionIds.map(async (permId) => {
+            const permission = await PermissionsModel.getById(permId);
+            return permission ? { id: permission.id, name: permission.name } : null;
+          })
+        );
+        permissions = permissions.filter(p => p !== null);
+      }
+
+      // Check if user has required type permission
+      const hasTypePermission = permissions.some(p => p.name === type);
+      if (!hasTypePermission) {
+        console.warn('⚠️ Login attempt without required type permission:', { 
+          userId: user.id, 
+          type,
+          availablePermissions: permissions.map(p => p.name)
+        });
+        res.status(403).json({ 
+          error: `User does not have access to ${type}. Contact administrator for access.` 
+        });
+        return;
+      }
+
       // Generate tokens
       const { accessToken, refreshToken, expiresAt, refreshExpiresAt } = 
         AuthController.generateTokens(user.id, user.email, user.username);
@@ -160,7 +205,7 @@ class AuthController {
       // Update last login
       await UsersModel.update(user.id, { last_login: new Date() });
 
-      console.log('✓ User logged in successfully:', { userId: user.id, username: user.username });
+      console.log('✓ User logged in successfully:', { userId: user.id, username: user.username, type });
 
       res.status(200).json({
         success: true,
@@ -173,6 +218,8 @@ class AuthController {
             first_name: user.first_name,
             last_name: user.last_name,
             role: user.role,
+            type,
+            permissions,
           },
           tokens: {
             accessToken,

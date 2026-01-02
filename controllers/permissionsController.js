@@ -11,7 +11,21 @@ class PermissionsController {
         return;
       }
 
-      res.status(200).json({ success: true, data: permission });
+      // If this is a parent permission, get its children
+      let response = {
+        id: permission.id,
+        name: permission.name,
+      };
+
+      if (permission.parent_id === null) {
+        const children = await PermissionsModel.getByParentId(permission.id);
+        response.children = children.map(child => ({
+          id: child.id,
+          name: child.name,
+        }));
+      }
+
+      res.status(200).json({ success: true, data: response });
     } catch (error) {
       console.error('Error in getPermissionById:', error);
       res.status(500).json({ error: 'Failed to get permission' });
@@ -28,7 +42,21 @@ class PermissionsController {
         return;
       }
 
-      res.status(200).json({ success: true, data: permission });
+      // If this is a parent permission, get its children
+      let response = {
+        id: permission.id,
+        name: permission.name,
+      };
+
+      if (permission.parent_id === null) {
+        const children = await PermissionsModel.getByParentId(permission.id);
+        response.children = children.map(child => ({
+          id: child.id,
+          name: child.name,
+        }));
+      }
+
+      res.status(200).json({ success: true, data: response });
     } catch (error) {
       console.error('Error in getPermissionByName:', error);
       res.status(500).json({ error: 'Failed to get permission' });
@@ -40,12 +68,30 @@ class PermissionsController {
       const limit = req.query.limit ? parseInt(req.query.limit, 10) : 100;
       const offset = req.query.offset ? parseInt(req.query.offset, 10) : 0;
 
-      const permissions = await PermissionsModel.getAll(limit, offset);
+      // Get all parent permissions
+      const parentPermissions = await PermissionsModel.getParentPermissions(limit, offset);
       const count = await PermissionsModel.count();
+
+      // Build hierarchical structure
+      const hierarchicalPermissions = await Promise.all(
+        parentPermissions.map(async (parent) => {
+          // Get child permissions for this parent
+          const children = await PermissionsModel.getByParentId(parent.id);
+          
+          return {
+            id: parent.id,
+            name: parent.name,
+            children: children.map(child => ({
+              id: child.id,
+              name: child.name,
+            })),
+          };
+        })
+      );
 
       res.status(200).json({
         success: true,
-        data: permissions,
+        data: hierarchicalPermissions,
         pagination: {
           limit,
           offset,
@@ -82,9 +128,29 @@ class PermissionsController {
 
       const permissions = await PermissionsModel.search(q, limit, offset);
 
+      // Build hierarchical structure for search results
+      const hierarchicalResults = await Promise.all(
+        permissions.map(async (permission) => {
+          let response = {
+            id: permission.id,
+            name: permission.name,
+          };
+
+          if (permission.parent_id === null) {
+            const children = await PermissionsModel.getByParentId(permission.id);
+            response.children = children.map(child => ({
+              id: child.id,
+              name: child.name,
+            }));
+          }
+
+          return response;
+        })
+      );
+
       res.status(200).json({
         success: true,
-        data: permissions,
+        data: hierarchicalResults,
         pagination: {
           limit,
           offset,

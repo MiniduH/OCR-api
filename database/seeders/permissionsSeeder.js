@@ -1,88 +1,247 @@
 const { query } = require('../../config/database');
 
 /**
- * Permissions Seeder
- * Seeds default permissions into the database
+ * Permissions Seeder with Hierarchical Structure
+ * Seeds default permissions with parent-child relationships
+ * Parent IDs: 0 = root level (main categories)
  */
 
 const permissions = [
+  // Access - Parent (ID 1, parent_id 0)
   {
-    name: 'create',
-    description: 'Create new content or resources'
+    name: 'access',
+    description: 'Access control and navigation',
+    parent_id: null,
   },
   {
-    name: 'read',
-    description: 'View content or resources'
+    name: 'app',
+    description: 'Access to app',
+    parent_id: null, // Will be set after 'access' is created
   },
   {
-    name: 'update',
-    description: 'Edit existing content or resources'
+    name: 'portal',
+    description: 'Access to portal',
+    parent_id: null, // Will be set after 'access' is created
+  },
+
+  // Tickets - Parent
+  {
+    name: 'tickets',
+    description: 'Ticket management',
+    parent_id: null,
   },
   {
-    name: 'delete',
-    description: 'Remove content or resources'
+    name: 'view tickets',
+    description: 'View tickets',
+    parent_id: null, // Will be set after 'tickets' is created
   },
   {
-    name: 'manage_users',
-    description: 'Manage user accounts and profiles'
+    name: 'add reprint request',
+    description: 'Add request reprint',
+    parent_id: null, // Will be set after 'tickets' is created
+  },
+
+  // Reprint Requests - Parent
+  {
+    name: 'reprint requests',
+    description: 'Reprint request management',
+    parent_id: null,
   },
   {
-    name: 'manage_roles',
-    description: 'Create, update, and delete roles'
+    name: 'view reprint requests',
+    description: 'View reprint requests',
+    parent_id: null, // Will be set after 'reprint_requests' is created
   },
   {
-    name: 'manage_settings',
-    description: 'Access system settings'
+    name: 'add approval workflow',
+    description: 'Add approval workflow',
+    parent_id: null, // Will be set after 'reprint_requests' is created
+  },
+
+  // Workflow - Parent
+  {
+    name: 'workflow',
+    description: 'Workflow management',
+    parent_id: null,
   },
   {
-    name: 'manage_permissions',
-    description: 'Manage role permissions'
+    name: 'view workflow',
+    description: 'View workflow',
+    parent_id: null, // Will be set after 'workflow' is created
   },
   {
-    name: 'view_reports',
-    description: 'Access analytics and reports'
+    name: 'create workflow',
+    description: 'Create workflow',
+    parent_id: null, // Will be set after 'workflow' is created
   },
   {
-    name: 'export_data',
-    description: 'Export data from the system'
+    name: 'edit workflow',
+    description: 'Edit workflow',
+    parent_id: null, // Will be set after 'workflow' is created
   },
   {
-    name: 'manage_tickets',
-    description: 'Manage ticket system and operations'
+    name: 'delete workflow',
+    description: 'Delete workflow',
+    parent_id: null, // Will be set after 'workflow' is created
   },
   {
-    name: 'view_analytics',
-    description: 'View system analytics and statistics'
+    name: 'assign user to workflow',
+    description: 'Assign user to workflow',
+    parent_id: null, // Will be set after 'workflow' is created
+  },
+
+  // User - Parent
+  {
+    name: 'user',
+    description: 'User management',
+    parent_id: null,
   },
   {
-    name: 'approve_requests',
-    description: 'Approve pending requests'
+    name: 'view users',
+    description: 'View users',
+    parent_id: null, // Will be set after 'user' is created
   },
   {
-    name: 'reject_requests',
-    description: 'Reject pending requests'
+    name: 'add user',
+    description: 'Add user',
+    parent_id: null, // Will be set after 'user' is created
   },
   {
-    name: 'audit_logs',
-    description: 'Access and view audit logs'
-  }
+    name: 'edit user',
+    description: 'Edit user',
+    parent_id: null, // Will be set after 'user' is created
+  },
+  {
+    name: 'delete user',
+    description: 'Delete user',
+    parent_id: null, // Will be set after 'user' is created
+  },
+  {
+    name: 'change user status',
+    description: 'Change user status',
+    parent_id: null, // Will be set after 'user' is created
+  },
+
+  // Role - Parent
+  {
+    name: 'role',
+    description: 'Role management',
+    parent_id: null,
+  },
+  {
+    name: 'view roles',
+    description: 'View roles',
+    parent_id: null, // Will be set after 'role' is created
+  },
+  {
+    name: 'create role',
+    description: 'Create role',
+    parent_id: null, // Will be set after 'role' is created
+  },
+  {
+    name: 'edit role',
+    description: 'Edit role',
+    parent_id: null, // Will be set after 'role' is created
+  },
+  {
+    name: 'delete role',
+    description: 'Delete role',
+    parent_id: null, // Will be set after 'role' is created
+  },
+
+  // App Permissions - Parent
+  {
+    name: 'app permissions',
+    description: 'App permissions management',
+    parent_id: null,
+  },
+  {
+    name: 'scan',
+    description: 'Scan permission',
+    parent_id: null, // Will be set after 'app_permissions' is created
+  },
+  {
+    name: 'reprint',
+    description: 'Reprint permission',
+    parent_id: null, // Will be set after 'app_permissions' is created
+  },
 ];
+
+// Parent permission names that should have parent_id = null (root level)
+const parentPermissions = [
+  'access',
+  'tickets',
+  'reprint requests',
+  'workflow',
+  'user',
+  'role',
+  'app permissions',
+];
+
+// Child permission mappings
+const childPermissionMap = {
+  'access': ['app', 'portal'],
+  'tickets': ['view tickets', 'add reprint request'],
+  'reprint requests': ['view reprint requests', 'add approval workflow'],
+  'workflow': ['view workflow', 'create workflow', 'edit workflow', 'delete workflow', 'assign user to workflow'],
+  'user': ['view users', 'add user', 'edit user', 'delete user', 'change user status'],
+  'role': ['view roles', 'create role', 'edit role', 'delete role'],
+  'app permissions': ['scan', 'reprint'],
+};
 
 const seed = async () => {
   try {
-    console.log('🌱 Seeding permissions...');
+    console.log('🌱 Seeding permissions with hierarchical structure...');
 
-    for (const permission of permissions) {
+    // Store parent IDs for reference
+    const parentIds = {};
+
+    // First pass: Insert all parent permissions (parent_id = null)
+    for (const parentName of parentPermissions) {
       const insertQuery = `
-        INSERT INTO permissions (name, description)
-        VALUES ($1, $2)
-        ON CONFLICT (name) DO NOTHING;
+        INSERT INTO permissions (name, description, parent_id)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (name) DO UPDATE SET description = $2, parent_id = $3
+        RETURNING id, name;
       `;
 
-      await query(insertQuery, [permission.name, permission.description]);
+      const result = await query(insertQuery, [parentName, 
+        permissions.find(p => p.name === parentName)?.description || '', 
+        null
+      ]);
+
+      if (result.rows.length > 0) {
+        parentIds[parentName] = result.rows[0].id;
+        console.log(`  ✓ Parent permission '${parentName}' (ID: ${result.rows[0].id})`);
+      }
     }
 
-    console.log(`✅ ${permissions.length} permissions seeded successfully`);
+    // Second pass: Insert all child permissions with correct parent_id
+    for (const [parentName, childNames] of Object.entries(childPermissionMap)) {
+      const parentId = parentIds[parentName];
+
+      for (const childName of childNames) {
+        const childPerm = permissions.find(p => p.name === childName);
+        const insertQuery = `
+          INSERT INTO permissions (name, description, parent_id)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (name) DO UPDATE SET description = $2, parent_id = $3
+          RETURNING id, name;
+        `;
+
+        const result = await query(insertQuery, [
+          childName,
+          childPerm?.description || '',
+          parentId,
+        ]);
+
+        if (result.rows.length > 0) {
+          console.log(`  ✓ Child permission '${childName}' (ID: ${result.rows[0].id}, Parent ID: ${parentId})`);
+        }
+      }
+    }
+
+    console.log(`✅ ${permissions.length} permissions seeded successfully with hierarchy`);
   } catch (error) {
     console.error('❌ Error seeding permissions:', error.message);
     throw error;

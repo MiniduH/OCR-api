@@ -3,15 +3,15 @@ const bcrypt = require('bcryptjs');
 
 // Role mapping: numeric IDs to role names
 const ROLE_MAP = {
-  1: 'user',
+  1: 'admin',
   2: 'moderator',
-  3: 'admin',
+  3: 'user',
 };
 
 const REVERSE_ROLE_MAP = {
-  'user': 1,
+  'admin': 1,
   'moderator': 2,
-  'admin': 3,
+  'user': 3,
 };
 
 class UsersModel {
@@ -178,14 +178,16 @@ class UsersModel {
     const values = [];
     let paramCount = 1;
 
-    Object.entries(updates).forEach(async ([key, value]) => {
+    // Convert numeric role to string if provided
+    if (updates.role) {
+      updates.role = this.convertRoleToString(updates.role);
+    }
+
+    Object.entries(updates).forEach(([key, value]) => {
       if (key !== 'id' && key !== 'created_at') {
         updateFields.push(`${key} = $${paramCount}`);
         if (key === 'metadata') {
           values.push(JSON.stringify(value));
-        } else if (key === 'password') {
-          // Hash password before updating
-          values.push(value); // Will be replaced with hashed value
         } else {
           values.push(value);
         }
@@ -195,10 +197,7 @@ class UsersModel {
 
     // Hash password if it's being updated
     if (updates.password) {
-      const passwordIndex = values.findIndex((_, i) => {
-        const keys = Object.keys(updates).filter(k => k !== 'id' && k !== 'created_at');
-        return keys[i] === 'password';
-      });
+      const passwordIndex = updateFields.findIndex(field => field.includes('password'));
       if (passwordIndex !== -1) {
         values[passwordIndex] = await this.hashPassword(updates.password);
       }
