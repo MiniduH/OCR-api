@@ -1,4 +1,5 @@
 const RolesModel = require('../models/Roles');
+const PermissionsModel = require('../models/Permissions');
 
 class RolesController {
   static async createRole(req, res) {
@@ -65,9 +66,30 @@ class RolesController {
       const roles = await RolesModel.getAll(limit, offset);
       const count = await RolesModel.count();
 
+      // Fetch permission details for each role
+      const rolesWithPermissionDetails = await Promise.all(
+        roles.map(async (role) => {
+          const permissionIds = Array.isArray(role.permissions) 
+            ? role.permissions 
+            : JSON.parse(role.permissions || '[]');
+          
+          const permissionDetails = await Promise.all(
+            permissionIds.map(async (permId) => {
+              const permission = await PermissionsModel.getById(permId);
+              return permission ? { id: permission.id, name: permission.name } : null;
+            })
+          );
+
+          return {
+            ...role,
+            permissions: permissionDetails.filter(p => p !== null),
+          };
+        })
+      );
+
       res.status(200).json({
         success: true,
-        data: roles,
+        data: rolesWithPermissionDetails,
         pagination: {
           limit,
           offset,
