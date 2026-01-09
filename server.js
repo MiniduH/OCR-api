@@ -4,7 +4,12 @@ const cors = require('cors');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const { Server: SocketServer } = require('socket.io');
 const { connectDB } = require('./config/database');
+
+// Import WebSocket handlers
+const TicketsSocketHandler = require('./websocket/ticketsHandler');
 
 // Import authentication routes
 const authRoutes = require('./routes/auth');
@@ -197,9 +202,28 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
+// Create HTTP server for Socket.IO support
+const server = http.createServer(app);
+
+// Initialize Socket.IO with CORS configuration
+const io = new SocketServer(server, {
+  cors: corsOptions,
+  transports: ['websocket', 'polling'],
+});
+
+// Socket.IO middleware for handling connections
+io.on('connection', (socket) => {
+  // Initialize ticket handlers
+  TicketsSocketHandler.initialize(socket);
+});
+
+// Make io accessible to routes and controllers if needed
+app.locals.io = io;
+
 // HTTP Configuration
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🌐 Server running on http://localhost:${PORT}`);
+  console.log(`📡 WebSocket running on ws://localhost:${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api`);
   console.log(`❤️  Health Check: http://localhost:${PORT}/api/health`);
 });

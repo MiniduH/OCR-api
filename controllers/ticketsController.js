@@ -1,5 +1,6 @@
 const TicketsModel = require('../models/Tickets');
 const uploadTicketImage = require('../utils/uploadTicketImage');
+const TicketsSocketHandler = require('../websocket/ticketsHandler');
 
 class TicketsController {
   static async createTicket(req, res) {
@@ -26,6 +27,13 @@ class TicketsController {
       }
 
       const newTicket = await TicketsModel.create(ticket);
+      
+      // Broadcast ticket creation to all WebSocket clients watching tickets
+      const io = req.app.locals.io;
+      if (io) {
+        TicketsSocketHandler.broadcastTicketCreated(io, newTicket);
+      }
+      
       res.status(201).json({ success: true, data: newTicket });
     } catch (error) {
       console.error('Error in createTicket:', error);
@@ -102,6 +110,12 @@ class TicketsController {
         return;
       }
 
+      // Broadcast ticket update to all WebSocket clients watching tickets
+      const io = req.app.locals.io;
+      if (io) {
+        TicketsSocketHandler.broadcastTicketUpdate(io, updatedTicket);
+      }
+
       res.status(200).json({ success: true, data: updatedTicket });
     } catch (error) {
       console.error('Error in updateTicket:', error);
@@ -117,6 +131,12 @@ class TicketsController {
       if (!deleted) {
         res.status(404).json({ error: 'Ticket not found' });
         return;
+      }
+
+      // Broadcast ticket deletion to all WebSocket clients watching tickets
+      const io = req.app.locals.io;
+      if (io) {
+        TicketsSocketHandler.broadcastTicketDeleted(io, parseInt(id, 10));
       }
 
       res.status(200).json({ success: true, message: 'Ticket deleted successfully' });
@@ -182,26 +202,6 @@ class TicketsController {
         return;
       }
 
-      // Validate required fields
-      const requiredFields = [
-        'date',
-        'time',
-        'terminal_id',
-        'location',
-        'no_tickets',
-        'total_amount',
-        'ticket_amount_pp',
-        'scanned_data',
-      ];
-
-      for (const field of requiredFields) {
-        if (!(field in ticketData) || ticketData[field] === undefined || ticketData[field] === null) {
-          console.warn(`⚠️ Missing required field: ${field}`);
-          res.status(400).json({ error: `Missing required field: ${field}` });
-          return;
-        }
-      }
-
       // Use trace_no for image filename, generate if not provided
       const trace_no = ticketData.trace_no || `TRACE_${Date.now()}`;
       
@@ -222,6 +222,13 @@ class TicketsController {
         const newTicket = await TicketsModel.create(ticketData);
         console.log('✓ Ticket created with ID:', newTicket.id);
 
+        // Broadcast ticket creation to all WebSocket clients watching tickets
+        const io = req.app.locals.io;
+        if (io) {
+          TicketsSocketHandler.broadcastTicketCreated(io, newTicket);
+          console.log('📢 Ticket creation broadcasted to WebSocket clients');
+        }
+
         res.status(201).json({ 
           success: true, 
           data: newTicket,
@@ -229,10 +236,26 @@ class TicketsController {
         });
       } catch (uploadError) {
         console.error('❌ Image upload failed:', uploadError);
-        // Return detailed error message
-        res.status(500).json({ 
-          error: uploadError.message || 'Failed to upload image to S3',
-          details: uploadError.toString()
+        
+        // Handle specific MinIO/S3 errors
+        let errorMessage = 'Failed to upload image to S3';
+        let statusCode = 500;
+        
+        if (uploadError.message.includes('AccessDenied') || uploadError.message.includes('Access Denied')) {
+          errorMessage = 'MinIO Access Denied - Check credentials and bucket permissions';
+          statusCode = 403;
+        } else if (uploadError.message.includes('NoSuchBucket')) {
+          errorMessage = 'MinIO bucket does not exist';
+          statusCode = 404;
+        } else if (uploadError.message.includes('ECONNREFUSED')) {
+          errorMessage = 'Cannot connect to MinIO server - Check AWS_ENDPOINT';
+          statusCode = 503;
+        }
+        
+        return res.status(statusCode).json({ 
+          error: errorMessage,
+          details: uploadError.message,
+          suggestion: 'Check MinIO configuration in .env file'
         });
       }
     } catch (error) {

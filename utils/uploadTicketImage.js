@@ -9,10 +9,10 @@ const s3 = require("../config/s3");
  * @returns {String} S3 path of uploaded image
  */
 module.exports = async function uploadTicketImage(imageBuffer, originalName, trace_no) {
-  // Generate unique filename: tickets/trace_no_timestamp.ext
+  // Generate unique filename: trace_no_timestamp.ext (no 'tickets/' prefix)
   const fileExtension = originalName.split('.').pop().toLowerCase();
   const timestamp = Date.now();
-  const fileName = `tickets/${trace_no}_${timestamp}.${fileExtension}`;
+  const fileName = `${trace_no}_${timestamp}.${fileExtension}`;
 
   // Determine MIME type
   const mimeTypeMap = {
@@ -30,14 +30,17 @@ module.exports = async function uploadTicketImage(imageBuffer, originalName, tra
     Key: fileName,
     Body: imageBuffer,
     ContentType: contentType,
+    // Set ACL to public-read for immediate public access
+    ACL: 'public-read',
   };
 
   try {
-    console.log('🔵 Uploading to S3:', {
+    console.log('🔵 Uploading to S3/MinIO:', {
       bucket: process.env.AWS_BUCKET,
       key: fileName,
       size: imageBuffer.length,
       contentType,
+      acl: 'public-read',
     });
     
     await s3.send(new PutObjectCommand(params));
@@ -53,7 +56,7 @@ module.exports = async function uploadTicketImage(imageBuffer, originalName, tra
   }
 
   // Return the MinIO HTTPS viewable path
-  // Format: https://minio.divisarana.org/bucket-name/path
+  // Format: https://minio.divisarana.org/bucket-name/filename
   const minionUrl = process.env.MINIO_URL || 'https://minio.divisarana.org';
   return `${minionUrl}/${process.env.AWS_BUCKET}/${fileName}`;
 };
